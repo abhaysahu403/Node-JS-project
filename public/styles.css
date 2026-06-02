@@ -57,6 +57,8 @@ select {
   line-height: 0.95;
   letter-spacing: -0.04em;
   margin-bottom: 20px;
+  color: #00ff88;
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
 }
 
 .hero-copy p {
@@ -123,7 +125,7 @@ select {
 .card h3,
 .contact-card h3 {
   margin: 0;
-  color: var(--primary);
+  color: #ff6b35;
 }
 
 .hero-panel p,
@@ -139,11 +141,12 @@ select {
   gap: 10px;
   padding: 10px 15px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.12);
-  color: #93c5fd;
+  background: rgba(255, 107, 53, 0.2);
+  color: #ffaa44;
   margin-bottom: 18px;
   font-size: 0.95rem;
   width: fit-content;
+  font-weight: bold;
 }
 
 .marquee {
@@ -195,6 +198,8 @@ select {
 .section-heading h2 {
   font-family: 'Syne', 'Clash Display', sans-serif;
   font-size: 2rem;
+  color: #00d4ff;
+  text-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
 }
 
 .grid {
