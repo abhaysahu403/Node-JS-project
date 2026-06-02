@@ -28,7 +28,6 @@ pids
 *.sw?
 
 # Docker
-Dockerfile
 
 .dockerignore
 # Uploaded files
