@@ -29,9 +29,8 @@ pids
 
 # Docker
 Dockerfile
-.dockerignore
-docker-compose.yml
 
+.dockerignore
 # Uploaded files
 uploads/
 
