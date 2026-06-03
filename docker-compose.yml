@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # MySQL Database Service
   mysql:
-    image: mysql:8.0-alpine
+    image: mysql:8.0
     container_name: cloud-nexus-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
@@ -12,7 +10,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-userpassword}
       MYSQL_ALLOW_EMPTY_PASSWORD: "no"
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "${DB_PORT:-3307}:3306"
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
       - mysql_data:/var/lib/mysql
@@ -46,9 +44,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     networks:
       - cloud_nexus_network
     restart: unless-stopped
@@ -67,9 +62,6 @@ services:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     networks:
       - cloud_nexus_network
     restart: unless-stopped
