@@ -1,31 +1,180 @@
-name: Deploy to EC2
+name: Cloud Nexus HR Platform - CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY_BACKEND: cloud-nexus-hr-backend
+  ECR_REPOSITORY_FRONTEND: cloud-nexus-hr-frontend
 
 jobs:
-  deploy:
+  # Build and Test Backend
+  build-backend:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.2.0
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/nodejs.application-deploy
+          node-version: '20'
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
+      
+      - name: Lint backend
+        working-directory: ./backend
+        run: npm run lint --if-present
+      
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build --if-present
+      
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test --if-present
+        continue-on-error: true
 
-            git pull origin main
+  # Build and Test Frontend
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm install
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test --if-present --watchAll=false
+        continue-on-error: true
 
-            docker compose down
+  # Build and Push Docker Images (Only on main branch)
+  build-docker:
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Build and push backend image
+        working-directory: ./backend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
+      
+      - name: Build and push frontend image
+        working-directory: ./frontend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:latest
 
-            docker compose up --build -d
+  # Deploy to ECS Fargate (Only on main branch)
+  deploy-ecs:
+    needs: build-docker
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Update ECS Service - Backend
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+            --service cloud-nexus-hr-backend \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+        continue-on-error: true
+      
+      - name: Update ECS Service - Frontend
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+            --service cloud-nexus-hr-frontend \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+        continue-on-error: true
+      
+      - name: Wait for services to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+            --services cloud-nexus-hr-backend cloud-nexus-hr-frontend \
+            --region ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+  # Security Scan
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        continue-on-error: true
+      
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  # Code Quality Analysis
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run SonarCloud scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true
 
             docker image prune -f

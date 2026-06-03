@@ -27,9 +27,6 @@ pids
 *.sln
 *.sw?
 
-# Docker
-
-.dockerignore
 # Uploaded files
 uploads/
 
