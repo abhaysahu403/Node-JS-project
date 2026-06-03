@@ -5,7 +5,7 @@ services:
     container_name: cloud-nexus-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_NAME:-cloud_nexus_hr}
+      MYSQL_DATABASE: ${DB_NAME:-cloudnexushr}
       MYSQL_USER: ${DB_USER:-hr_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-userpassword}
       MYSQL_ALLOW_EMPTY_PASSWORD: "no"
@@ -35,7 +35,7 @@ services:
       DB_PORT: 3306
       DB_USER: ${DB_USER:-root}
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword}
-      DB_NAME: ${DB_NAME:-cloud_nexus_hr}
+      DB_NAME: ${DB_NAME:-cloudnexushr}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
       JWT_EXPIRY: ${JWT_EXPIRY:-24h}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}

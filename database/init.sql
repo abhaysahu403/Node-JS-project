@@ -1,11 +1,11 @@
 -- Cloud Nexus HR Management Platform Database Schema
 -- MySQL 8.0+
 
--- Create database
-CREATE DATABASE IF NOT EXISTS cloud_nexus_hr
+-- Create database (use cloudnexushr to match ECS environment variable)
+CREATE DATABASE IF NOT EXISTS cloudnexushr
 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-USE cloud_nexus_hr;
+USE cloudnexushr;
 
 -- Employees Table
 CREATE TABLE IF NOT EXISTS employees (
